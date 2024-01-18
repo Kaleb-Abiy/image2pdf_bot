@@ -64,6 +64,16 @@ def index():
 async def webhook_handler(webhook_data: TelegramWebhook):
     try:
         bot = Application.builder().token(token).build()
+        # Add the start command handler
+        start_handler = CommandHandler('start', start)
+        convert_handler = MessageHandler(filters.PHOTO, convert)
+        bot.add_handler(start_handler)
+        bot.add_handler(convert_handler)
+
+        # Set the webhook
+        # await bot.bot.setWebhook(
+        #     url=f"https://image2pdf-bot.vercel.app/webhook", allowed_updates=Update.ALL_TYPES
+        # )
         update = Update.de_json(webhook_data.__dict__, bot)
         await bot.process_update(update)
     except Exception as e:
@@ -77,20 +87,11 @@ async def main():
     # Build the application using the token
     telegram_app = Application.builder().token(token).build()
 
-    # Add the start command handler
-    start_handler = CommandHandler('start', start)
-    convert_handler = MessageHandler(filters.PHOTO, convert)
-    telegram_app.add_handler(start_handler)
-    telegram_app.add_handler(convert_handler)
-
-    # Set the webhook
-    await telegram_app.bot.setWebhook(
-        url=f"https://image2pdf-bot.vercel.app/webhook", allowed_updates=Update.ALL_TYPES
-    )
+    
 
     # Run the application
     import uvicorn
-    uvicorn.run(telegram_app, host="0.0.0.0", port=8000)
+    uvicorn.run(telegram_app, host="0.0.0.0")
 
 if __name__ == '__main__':
     import asyncio
