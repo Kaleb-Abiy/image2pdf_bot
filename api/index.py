@@ -1,14 +1,14 @@
-import os
-from typing import Optional
-from fastapi import FastAPI
-from pydantic import BaseModel
-from decouple import config
-from telegram import Update, ForceReply
-from telegram.ext import Application, ContextTypes, CommandHandler, MessageHandler, filters
 import io
 import requests
 from PIL import Image
+from typing import Optional
+from fastapi import FastAPI, HTTPException, Request
+from pydantic import BaseModel
+from telegram import Update, ForceReply, Bot
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 
+# Load configuration from .env file
+from decouple import config
 
 token = config('TELEGRAM_ACCESS_TOKEN')
 
@@ -16,9 +16,6 @@ app = FastAPI()
 
 
 class TelegramWebhook(BaseModel):
-    '''
-    Telegram Webhook Model using Pydantic for request body validation
-    '''
     update_id: int
     message: Optional[dict]
     edited_message: Optional[dict]
@@ -33,7 +30,6 @@ class TelegramWebhook(BaseModel):
     poll_answer: Optional[dict]
 
 
-
 def convert_image_to_pdf(image_path):
     response = requests.get(image_path)
     if response.status_code == 200:
@@ -41,60 +37,61 @@ def convert_image_to_pdf(image_path):
         img = Image.open(img_res)
         pdf = io.BytesIO()
         img.save(pdf, "PDF", resolution=100.0)
-        # pdf.seek(0)
+        pdf.seek(0)
         return pdf.getvalue()
-    
 
-async def convert(update:Update, context:ContextTypes):
+
+async def convert(update: Update, context: CallbackContext):
     img = await update.message.photo[-1].get_file()
     img_path = img.file_path
     pdf_content = convert_image_to_pdf(img_path)
     await update.message.reply_document(document=io.BytesIO(pdf_content), filename="converted.pdf")
-    
 
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    message = """Welcome to the image to pdf converter telegram Bot that is magical!
+async def start(update: Update, context: CallbackContext):
+    message = """Welcome to the image to pdf converter Telegram Bot that is magical!
 Just send the image you want to convert and watch the magic happen! built by @Kaleb_Mu
     """
     await update.message.reply_text(message, reply_markup=ForceReply())
 
 
+@app.get('/')
+def index():
+    return {'message': 'hello world'}
+
+
+@app.post('/webhook')
+async def webhook_handler(webhook_data: TelegramWebhook):
+    try:
+        bot = Application.builder().token(token).build()
+        update = Update.de_json(webhook_data.__dict__, bot)
+        await bot.process_update(update)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"Error processing update: {str(e)}")
+
+    return {"message": "ok"}
+
+
 async def main():
     # Build the application using the token
-    app = Application.builder().token(token).build()
+    telegram_app = Application.builder().token(token).build()
 
     # Add the start command handler
     start_handler = CommandHandler('start', start)
     convert_handler = MessageHandler(filters.PHOTO, convert)
-    app.add_handler(start_handler)
-    app.add_handler(convert_handler)
+    telegram_app.add_handler(start_handler)
+    telegram_app.add_handler(convert_handler)
 
-    app.bot.set_webhook(
-        url=f"https://image2pdf-bot.vercel.app/webhook", allowed_updates=Update.ALL_TYPES)
+    # Set the webhook
+    await telegram_app.bot.setWebhook(
+        url=f"https://image2pdf-bot.vercel.app/webhook", allowed_updates=Update.ALL_TYPES
+    )
 
-    @app.get('/')
-    def hello():
-         return {'message': 'hello world'}
-
-    @app.post('/webhook')
-    async def webhook(webhook_data: TelegramWebhook):
-        """Handle incoming Telegram updates by putting them into the `update_queue`"""
-        await app.update_queue.put(Update.de_json(webhook_data.__dict__, bot=app.bot))
-        return {"message": "ok"}
-
-        
-
-    # Run the polling loop
-    # app.run_polling(allowed_updates=Update.ALL_TYPES, timeout=300)
-
-
+    # Run the application
+    import uvicorn
+    uvicorn.run(telegram_app, host="0.0.0.0", port=8000)
 
 if __name__ == '__main__':
-    main()
-
-
-
-
-
-
+    import asyncio
+    asyncio.run(main())
