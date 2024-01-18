@@ -37,7 +37,8 @@ async def convert(update:Update, context:ContextTypes):
     pdf_content = convert_image_to_pdf(img_path)
     await update.message.reply_document(document=io.BytesIO(pdf_content), filename="converted.pdf")
 
-if __name__ == '__main__':
+
+async def main():
     # Build the application using the token
     app = Application.builder().token(token).build()
 
@@ -47,5 +48,18 @@ if __name__ == '__main__':
     app.add_handler(start_handler)
     app.add_handler(convert_handler)
 
+    app.bot.set_webhook(url=f"{URL}/webhook", allowed_updates=Update.ALL_TYPES)
+
+    async def webhook():
+        """Handle incoming Telegram updates by putting them into the `update_queue`"""
+        await app.update_queue.put(Update.de_json(webhook_data.__dict__, bot))
+        return {"message": "ok"}
+
     # Run the polling loop
-    app.run_polling(allowed_updates=Update.ALL_TYPES, timeout=300)
+    # app.run_polling(allowed_updates=Update.ALL_TYPES, timeout=300)
+
+
+
+if __name__ == '__main__':
+    main()
+    
