@@ -1,4 +1,5 @@
 import io
+import logging
 import requests
 from PIL import Image
 from typing import Optional
@@ -13,6 +14,18 @@ from decouple import config
 token = config('TELEGRAM_ACCESS_TOKEN')
 
 app = FastAPI()
+
+WEBHOOK_URL = "https://image2pdf-bot.vercel.app/webhook"
+
+logging.basicConfig(
+    format="%(levelname)s (%(asctime)s): %(message)s (Line: %(lineno)d [%(filename)s])",
+    datefmt="%Y-%m-%d %H:%M:%S",
+    level=logging.INFO,
+)
+
+logger = logging.getLogger(__name__)
+
+telegram_app = Application.builder().token(token).build()
 
 
 class TelegramWebhook(BaseModel):
@@ -57,25 +70,27 @@ Just send the image you want to convert and watch the magic happen! built by @Ka
 
 @app.get('/')
 def index():
-    return {'message': 'hello world'}
+    webhook_info = telegram_app.bot.get_webhook_info()
+    if webhook_info.url != WEBHOOK_URL:
+        telegram_app.bot.set_webhook(url=WEBHOOK_URL)
+        logger.info("Setting webhook: %s", webhook_info.url)
+        return "Webhook has been updated"
+
+    return "Webhook has already been set! I'm ready to work!"
 
 
 @app.post('/webhook')
 async def webhook_handler(webhook_data: TelegramWebhook):
     try:
-        bot = Application.builder().token(token).build()
+        update = Update.de_json(webhook_data.__dict__, telegram_app.bot)
+        
         # Add the start command handler
         start_handler = CommandHandler('start', start)
         convert_handler = MessageHandler(filters.PHOTO, convert)
-        bot.add_handler(start_handler)
-        bot.add_handler(convert_handler)
+        telegram_app.add_handler(start_handler)
+        telegram_app.add_handler(convert_handler)
 
-        # Set the webhook
-        # await bot.bot.setWebhook(
-        #     url=f"https://image2pdf-bot.vercel.app/webhook", allowed_updates=Update.ALL_TYPES
-        # )
-        update = Update.de_json(webhook_data.__dict__, bot)
-        await bot.process_update(update)
+        await telegram_app.process_update(update)
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error processing update: {str(e)}")
@@ -85,9 +100,14 @@ async def webhook_handler(webhook_data: TelegramWebhook):
 
 async def main():
     # Build the application using the token
-    telegram_app = Application.builder().token(token).build()
-
     
+
+     
+    # Set the webhook
+    await telegram_app.bot.setWebhook(
+        url=f"https://image2pdf-bot.vercel.app/webhook", allowed_updates=Update.ALL_TYPES
+    )
+  
 
     # Run the application
     import uvicorn
