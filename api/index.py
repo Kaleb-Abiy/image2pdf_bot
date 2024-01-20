@@ -83,6 +83,7 @@ def index():
 @app.post('/webhook')
 async def webhook_handler(webhook_data: TelegramWebhook):
     try:
+        logger.info(webhook_data)
         update = Update.de_json(webhook_data.__dict__, telegram_app.bot)
 
         logger.info(f"Update: {update}")
@@ -102,6 +103,6 @@ async def webhook_handler(webhook_data: TelegramWebhook):
 
 
 
-if __name__ == '__main__':
-    import asyncio
-    asyncio.run(main())
+# if __name__ == '__main__':
+#     import asyncio
+#     asyncio.run(main())
