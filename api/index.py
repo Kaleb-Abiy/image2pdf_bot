@@ -99,13 +99,28 @@ def index():
 
 @app.post('/webhook')
 async def webhook_handler(webhook_data):
-    try:
-        logger.info(webhook_data)
-        update = Update.de_json(webhook_data.__dict__, telegram_app.bot)
-        telegram_app.process_update(update)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error processing update: {str(e)}")
+    # try:
+    #     logger.info(webhook_data)
+    #     update = Update.de_json(webhook_data.__dict__, telegram_app.bot)
+    #     telegram_app.process_update(update)
+    # except Exception as e:
+    #     raise HTTPException(
+    #         status_code=500, detail=f"Error processing update: {str(e)}")
+    # return {"message": "ok"}
+    bot = Bot(token=token)
+    # convert the Telegram Webhook class to dictionary using __dict__ dunder method
+    update = Update.de_json(webhook_data.__dict__, bot)
+
+
+    # handle webhook request
+    telegram_app.process_update(update)
+
+    # Method 2
+    # you can just handle the webhook request here without using python-telegram-bot
+    # if webhook_data.message:
+    #     if webhook_data.message.text == '/start':
+    #         send_message(webhook_data.message.chat.id, 'Hello World')
+
     return {"message": "ok"}
 
 
