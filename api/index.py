@@ -25,7 +25,9 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-telegram_app = Application.builder().token(token).build()
+
+
+
 
 
 class TelegramWebhook(BaseModel):
@@ -68,6 +70,17 @@ Just send the image you want to convert and watch the magic happen! built by @Ka
     await update.message.reply_text(message, reply_markup=ForceReply())
 
 
+
+
+
+def register_handlers(app):
+    start_handler = CommandHandler('start', start)
+    convert_handler = MessageHandler(filters.PHOTO, convert)
+    app.add_handler(start_handler)
+    app.add_handler(convert_handler)
+
+
+
 @app.get('/')
 def index():
     # try:
@@ -80,26 +93,22 @@ def index():
     return {'message': "hello world"}
 
 
+
+
 @app.post('/webhook')
-async def webhook_handler(webhook_data: TelegramWebhook):
+async def webhook_handler(webhook_data):
     try:
         logger.info(webhook_data)
+        telegram_app = Application.builder().token(token).build()
         update = Update.de_json(webhook_data.__dict__, telegram_app.bot)
-
-        logger.info(f"Update: {update}")
-        
-        # Add the start command handler
-        start_handler = CommandHandler('start', start)
-        convert_handler = MessageHandler(filters.PHOTO, convert)
-        telegram_app.add_handler(start_handler)
-        telegram_app.add_handler(convert_handler)
-
-        await telegram_app.process_update(update)
+        register_handlers(telegram_app)
+        telegram_app.process_update(update)
     except Exception as e:
         raise HTTPException(
             status_code=500, detail=f"Error processing update: {str(e)}")
-
     return {"message": "ok"}
+
+
 
 
 
