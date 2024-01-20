@@ -102,6 +102,6 @@ async def webhook_handler(webhook_data: TelegramWebhook):
 
 
 
-# if __name__ == '__main__':
-#     import asyncio
-#     asyncio.run(main())
+if __name__ == '__main__':
+    import asyncio
+    asyncio.run(main())
