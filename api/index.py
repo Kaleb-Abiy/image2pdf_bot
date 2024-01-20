@@ -15,7 +15,7 @@ token = config('TELEGRAM_ACCESS_TOKEN')
 
 app = FastAPI()
 
-WEBHOOK_URL = "https://image2pdf-bot.vercel.app/webhook"
+WEBHOOK_URL = "http://127.0.0.1:8000/webhook"
 
 logging.basicConfig(
     format="%(levelname)s (%(asctime)s): %(message)s (Line: %(lineno)d [%(filename)s])",
@@ -70,19 +70,22 @@ Just send the image you want to convert and watch the magic happen! built by @Ka
 
 @app.get('/')
 def index():
-    webhook_info = telegram_app.bot.get_webhook_info()
-    if webhook_info.url != WEBHOOK_URL:
-        telegram_app.bot.set_webhook(url=WEBHOOK_URL)
-        logger.info("Setting webhook: %s", webhook_info.url)
-        return "Webhook has been updated"
-
-    return "Webhook has already been set! I'm ready to work!"
+    # try:
+    #     telegram_app.bot.set_webhook(url=WEBHOOK_URL)
+    #     logger.info(telegram_app.bot.get_webhook_info())
+    #     return "Webhook has been set"
+    # except Exception as e:
+    #     logger.error(e)
+    #     return "Webhook has already been set! I'm ready to work!"
+    return {'message': "hello world"}
 
 
 @app.post('/webhook')
 async def webhook_handler(webhook_data: TelegramWebhook):
     try:
         update = Update.de_json(webhook_data.__dict__, telegram_app.bot)
+
+        logger.info(f"Update: {update}")
         
         # Add the start command handler
         start_handler = CommandHandler('start', start)
@@ -98,21 +101,7 @@ async def webhook_handler(webhook_data: TelegramWebhook):
     return {"message": "ok"}
 
 
-async def main():
-    # Build the application using the token
-    
 
-     
-    # Set the webhook
-    await telegram_app.bot.setWebhook(
-        url=f"https://image2pdf-bot.vercel.app/webhook", allowed_updates=Update.ALL_TYPES
-    )
-  
-
-    # Run the application
-    import uvicorn
-    uvicorn.run(telegram_app, host="0.0.0.0")
-
-if __name__ == '__main__':
-    import asyncio
-    asyncio.run(main())
+# if __name__ == '__main__':
+#     import asyncio
+#     asyncio.run(main())
