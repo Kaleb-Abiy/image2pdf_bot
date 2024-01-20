@@ -25,6 +25,8 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+telegram_app = Application.builder().token(token).build()
+
 
 
 
@@ -73,11 +75,11 @@ Just send the image you want to convert and watch the magic happen! built by @Ka
 
 
 
-def register_handlers(app):
-    start_handler = CommandHandler('start', start)
-    convert_handler = MessageHandler(filters.PHOTO, convert)
-    app.add_handler(start_handler)
-    app.add_handler(convert_handler)
+
+start_handler = CommandHandler('start', start)
+convert_handler = MessageHandler(filters.PHOTO, convert)
+telegram_app.add_handler(start_handler)
+telegram_app.add_handler(convert_handler)
 
 
 
@@ -99,9 +101,7 @@ def index():
 async def webhook_handler(webhook_data):
     try:
         logger.info(webhook_data)
-        telegram_app = Application.builder().token(token).build()
         update = Update.de_json(webhook_data.__dict__, telegram_app.bot)
-        register_handlers(telegram_app)
         telegram_app.process_update(update)
     except Exception as e:
         raise HTTPException(
